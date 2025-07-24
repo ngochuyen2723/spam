@@ -24,6 +24,9 @@ from nltk.corpus import stopwords, wordnet
 from imblearn.over_sampling import SMOTE, ADASYN
 import streamlit as st
 
+nltk.download("stopwords")
+nltk.download("wordnet")
+
 st.set_page_config(
     page_title="Data Analysis & ML Models",
     page_icon="📊",
