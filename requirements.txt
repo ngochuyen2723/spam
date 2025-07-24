@@ -1,6 +1,5 @@
 nltk
 matplotlib
 seaborn
-scikit-learn
 imblearn
 wordcloud
