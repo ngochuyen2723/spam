@@ -24,9 +24,10 @@ from nltk.corpus import stopwords, wordnet
 from imblearn.over_sampling import SMOTE, ADASYN
 import streamlit as st
 
+nltk.download('averaged_perceptron_tagger_eng')
 nltk.download("stopwords")
 nltk.download("wordnet")
-nltk.download('averaged_perceptron_tagger_eng')
+
 
 st.set_page_config(
     page_title="Data Analysis & ML Models",
