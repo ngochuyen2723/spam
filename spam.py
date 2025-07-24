@@ -26,6 +26,7 @@ import streamlit as st
 
 nltk.download("stopwords")
 nltk.download("wordnet")
+nltk.download('averaged_perceptron_tagger_eng')
 
 st.set_page_config(
     page_title="Data Analysis & ML Models",
