@@ -1,7 +1,5 @@
+nltk
 matplotlib
 seaborn
-string
-re
-nltk
-imblearn
-sklearn
+scikit-learn
+imbalanced-learn
