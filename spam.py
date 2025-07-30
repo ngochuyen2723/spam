@@ -22,6 +22,7 @@ from sklearn.metrics import accuracy_score, f1_score, confusion_matrix, classifi
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from nltk.corpus import stopwords, wordnet
 from imblearn.over_sampling import SMOTE, ADASYN
+from deep_translator import GoogleTranslator
 import streamlit as st
 
 nltk.download('averaged_perceptron_tagger_eng')
@@ -248,7 +249,8 @@ with tabs[3]:
 with tabs[4]:
     st.header("🎯 Predict")
     message_input = st.text_input("Message", "")
-    message_pred = [preprocess_text(message_input)]
+    translated = GoogleTranslator(source='auto', target='en').translate(message_input)
+    message_pred = [preprocess_text(translated)]
     vector_name = st.selectbox("Vectorize",vectors,key="10")
     aug_name = st.selectbox("Augmentation",augments,key="11")
     model_name = st.selectbox("Model Name",models,key="12")
@@ -259,4 +261,5 @@ with tabs[4]:
         model_train = train_model(model_name,xtrain,ytrain)
         messages_vector = vectorize.transform(message_pred)
         pred = model_train.predict(messages_vector)
+        st.markdown(f'<h3 style="color:blue;">Message: {translated}</h3>', unsafe_allow_html=True)
         st.markdown(f'<h3 style="color:green;">Class Predicted: {le.inverse_transform(pred)[0]}</h3>', unsafe_allow_html=True)
