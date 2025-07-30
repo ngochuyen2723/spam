@@ -255,11 +255,11 @@ with tabs[4]:
     aug_name = st.selectbox("Augmentation",augments,key="11")
     model_name = st.selectbox("Model Name",models,key="12")
     if st.button("🚀 Train Model",key=13):
+        st.markdown(f'<h3 style="color:blue;">Message: {translated}</h3>', unsafe_allow_html=True)
         vectorize = create_vector(vector_name)
         features = vectorize.fit_transform(messages)
         xtrain, xtest, ytrain, ytest= create_train_test_data(features,y,aug_name)
         model_train = train_model(model_name,xtrain,ytrain)
         messages_vector = vectorize.transform(message_pred)
         pred = model_train.predict(messages_vector)
-        st.markdown(f'<h3 style="color:blue;">Message: {translated}</h3>', unsafe_allow_html=True)
         st.markdown(f'<h3 style="color:green;">Class Predicted: {le.inverse_transform(pred)[0]}</h3>', unsafe_allow_html=True)
