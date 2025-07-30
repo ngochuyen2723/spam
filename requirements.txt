@@ -3,3 +3,4 @@ matplotlib
 seaborn
 imblearn
 wordcloud
+deep_translator
