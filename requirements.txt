@@ -4,6 +4,6 @@ seaborn
 imblearn
 wordcloud
 deep_translator
-#torch
+torch
 #torchvision
 #faiss
