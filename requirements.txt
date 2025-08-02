@@ -5,4 +5,5 @@ imblearn
 wordcloud
 deep_translator
 torch
+torchvision
 faiss
