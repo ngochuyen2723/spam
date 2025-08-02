@@ -177,9 +177,9 @@ with tabs[1]:
     aug_name = st.selectbox("Data Augmentation",augments,key="1")
     vector_name = st.selectbox("Vectorize",vectors,key="2")
     if st.button("🚀 Train Model",key=3):
-        cols = st.columns(len(models))
+        cols_tag1 = st.columns(len(models))
         for index, model_name in enumerate(models):
-            with cols[index]:
+            with cols_tag1[index]:
                 vectorize = create_vector(vector_name)
                 features = vectorize.fit_transform(messages)
                 xtrain, xtest, ytrain, ytest= create_train_test_data(features,y,aug_name)
@@ -201,9 +201,9 @@ with tabs[2]:
     model_name = st.selectbox("Model Name",models,key="4")
     vector_name = st.selectbox("Vectorize",vectors,key="5")
     if st.button("🚀 Train Model",key=6):
-        cols = st.columns(len(augments))
+        cols_tag2 = st.columns(len(augments))
         for index, aug_name in enumerate(augments):
-            with cols[index]:
+            with cols_tag2[index]:
                 vectorize = create_vector(vector_name)
                 features = vectorize.fit_transform(messages)
                 xtrain, xtest, ytrain, ytest= create_train_test_data(features,y,aug_name)         
@@ -226,9 +226,9 @@ with tabs[3]:
     model_name = st.selectbox("Model Name",models,key="7")
     aug_name = st.selectbox("Augmentation",augments,key="8")
     if st.button("🚀 Train Model",key=9):
-        cols = st.columns(len(vectors))
+        cols_tag3 = st.columns(len(vectors))
         for index, vector_name in enumerate(vectors):
-            with cols[index]:
+            with cols_tag3[index]:
                 vectorize = create_vector(vector_name)
                 features = vectorize.fit_transform(messages)
                 xtrain, xtest, ytrain, ytest= create_train_test_data(features,y,aug_name)
