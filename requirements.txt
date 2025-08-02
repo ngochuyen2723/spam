@@ -4,3 +4,6 @@ seaborn
 imblearn
 wordcloud
 deep_translator
+torch
+faiss
+tqdm
