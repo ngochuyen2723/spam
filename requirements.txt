@@ -6,4 +6,3 @@ wordcloud
 deep_translator
 torch
 faiss
-tqdm
