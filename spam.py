@@ -23,6 +23,7 @@ from sklearn.preprocessing import StandardScaler, LabelEncoder
 from nltk.corpus import stopwords, wordnet
 from imblearn.over_sampling import SMOTE, ADASYN
 from deep_translator import GoogleTranslator
+from sklearn.metrics import precision_recall_curve
 import streamlit as st
 
 nltk.download('averaged_perceptron_tagger_eng')
@@ -140,6 +141,13 @@ def create_train_test_data(X,Y,augment):
 def train_model(model_name,features_vector,labels_vector):
     model = create_model(model_name)
     return model.fit(features_vector,labels_vector)
+
+def evaluate(y_true, y_pred, , pos_label=0):
+    accuracy = accuracy_score(y_true, y_pred)
+    f1_scores = f1_score(y_true, y_pred)
+    cm = confusion_matrix(y_true, y_pred)
+    prec, rec, thres = precision_recall_curve(y_true, y_pred)
+    return accuracy, f1_scores, cm, prec, rec, thres
     
 tabs = st.tabs(["📋 Data Overview", "Compare Model", "Compare Augmentation", "Compare BAGs - TFIDF", "Predict"])
 models = ['Logistic Regression', 'Support Vector Machine', 'Random Forest']
@@ -185,9 +193,7 @@ with tabs[1]:
                 xtrain, xtest, ytrain, ytest= create_train_test_data(features,y,aug_name)
                 model_train = train_model(model_name,xtrain,ytrain)
                 pred = model_train.predict(xtest)
-                accuracy = accuracy_score(ytest, pred)
-                f1_scores = f1_score(ytest, pred)
-                cm = confusion_matrix(ytest, pred)
+                accuracy, f1_scores, cm, prec, rec, thres = accuracy_score(ytest, pred)
                 st.subheader(model_name)
                 fig = plt.figure(figsize=(4,4))
                 sns.heatmap(cm, linewidths=1, fmt='d', cmap='Greens', annot=True)
@@ -234,6 +240,7 @@ with tabs[3]:
                 xtrain, xtest, ytrain, ytest= create_train_test_data(features,y,aug_name)
                 model_train = train_model(model_name,xtrain,ytrain)
                 pred = model_train.predict(xtest)
+                
                 accuracy = accuracy_score(ytest, pred)
                 f1_scores = f1_score(ytest, pred)
                 cm = confusion_matrix(ytest, pred)
