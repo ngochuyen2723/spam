@@ -1,11 +1,14 @@
 import re
+import nltk
 import string 
+import warnings
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from string import punctuation
-import nltk
+import time
+from datetime import datetime, timedelta
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from nltk.stem.porter import PorterStemmer
 from wordcloud import WordCloud,STOPWORDS
@@ -18,17 +21,20 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.svm import SVC
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
+from xgboost import XGBClassifier
 from sklearn.metrics import accuracy_score, f1_score, confusion_matrix, classification_report, precision_score, recall_score
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from nltk.corpus import stopwords, wordnet
 from imblearn.over_sampling import SMOTE, ADASYN
 from deep_translator import GoogleTranslator
 import streamlit as st
+from models import spam_classifier_pipeline
+from utils import *
+from models import *
 
+nltk.download('stopwords')
 nltk.download('averaged_perceptron_tagger_eng')
-nltk.download("stopwords")
-nltk.download("wordnet")
-
+nltk.download('wordnet')
 
 st.set_page_config(
     page_title="Data Analysis & ML Models",
@@ -36,9 +42,7 @@ st.set_page_config(
     layout="wide"
 )
 
-stop = set(stopwords.words('english'))
-punctuation = list(string.punctuation)
-stop.update(punctuation)
+
 
 st.markdown("""
     <style>
@@ -65,81 +69,35 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+@st.cache_resource
+def create_model_faiss():
+    MODEL_NAME = "intfloat/multilingual-e5-base"
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+    model = AutoModel.from_pretrained(MODEL_NAME)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
+    model.eval()
+    return model,device,tokenizer
+model,device,tokenizer = create_model_faiss()
+
 @st.cache_data
-def load_spam_data():
-    df= pd.read_csv('spam.csv')
-    df= df.drop_duplicates()
-    df = df.dropna()
-    return df
+def create_feature_label(path):
+    df = process_dataframe(path)
+    messages_faiss = df['Message'].values.tolist()
+    labels = df['Category'].values.tolist()
+    messages = [preprocess_text(message) for message in messages_faiss]
+    le = LabelEncoder()
+    y = le.fit_transform(labels)
+    return df, messages_faiss, messages, labels, y, le
+df, messages_faiss,messages, labels,y, le = create_feature_label('spam.csv')
 
-def punctuation_removal(text):
-    #translator = {k: '' for k in list(string.punctuation)}
-    translator = str.maketrans('','',string.punctuation)
-    return text.translate(translator)
-def get_simple_pos(tag):
-    if tag.startswith('J'):
-        return wordnet.ADJ
-    elif tag.startswith('V'):
-        return wordnet.VERB
-    elif tag.startswith('N'):
-        return wordnet.NOUN
-    elif tag.startswith('R'):
-        return wordnet.ADV
-    else:
-        return wordnet.NOUN
-def lemmatize_words(text):
-    lemmatizer = WordNetLemmatizer()
-    stop_words = stopwords.words('english')
-    final_text = []
-    for word in text.split():
-        if word not in stop_words and len(word) > 2:
-            pos = pos_tag([word])
-            lema = lemmatizer.lemmatize(word,get_simple_pos(pos[0][1]))
-            final_text.append(lema)
-    return " ".join(final_text)
-    
-def preprocess_text(text):
-    text = text.lower()
-    text = re.sub(r"[^\w\s]", '', text)
-    lema = lemmatize_words(text)
-    return lema
 
-df = load_spam_data()
-messages = df['Message'].values.tolist()
-labels = df['Category'].values.tolist()
-messages = [preprocess_text(message) for message in messages]
-le = LabelEncoder()
-y = le.fit_transform(labels)
-
-def create_model(name):
-    if name == 'Logistic Regression':
-        model = LogisticRegression()
-    elif name == 'Support Vector Machine':
-        model = SVC(kernel='linear', C=1, probability=True)
-    else:
-        model = RandomForestClassifier(n_estimators=400, random_state=11)
-
-    return model
-
-def create_vector(name):
-    if name == 'TFIDF':
-        return TfidfVectorizer(max_df=0.9, min_df=2)
-    else:
-        return CountVectorizer(max_df=0.9, min_df=2)
-
-def create_train_test_data(X,Y,augment):
-    xtrain, xtest, ytrain, ytest = train_test_split(X,Y,random_state=42, test_size = 0.3, stratify = Y)
-    if augment == 'SMOTE':
-        sm = SMOTE(random_state = 42)
-        xtrain, ytrain = sm.fit_resample(xtrain, ytrain)
-    elif augment == 'ADASYN':
-        ada = ADASYN(random_state = 42)
-        xtrain, ytrain = ada.fit_resample(xtrain, ytrain)
-    return xtrain, xtest, ytrain, ytest
-
-def train_model(model_name,features_vector,labels_vector):
-    model = create_model(model_name)
-    return model.fit(features_vector,labels_vector)
+def create_embedding_metadata(messages,model,tokenizer,device):
+    X_embeddings = get_embeddings(messages, model, tokenizer, device)
+    metadata = [{"index":i,"message":message, "label": label, "label_encoded":y[i]} 
+                    for i,(message, label) in enumerate(zip(messages,labels))]
+    return X_embeddings,metadata
+X_embeddings, metadata = create_embedding_metadata(messages_faiss,model,tokenizer,device)
 
 def evaluate(y_true, y_pred):
     accuracy = accuracy_score(y_true, y_pred)
@@ -151,7 +109,7 @@ def evaluate(y_true, y_pred):
 
 def plot_graph(y_true, y_pred,name):
     st.markdown(f'<h2 style="text-align: center;">{name}</h2>', unsafe_allow_html=True)
-    accuracy, f1_score, cm, prec, rec = evaluate(ytest,pred)
+    accuracy, f1_score, cm, prec, rec = evaluate(y_true,y_pred)
     col_acc, col_f1 = st.columns(2)
     col_acc.metric("Accuracy", f"{accuracy:.3f}")
     col_f1.metric("F1-Score", f"{f1_score:.3f}")
@@ -163,99 +121,114 @@ def plot_graph(y_true, y_pred,name):
     plt.ylabel('Actual label')
     plt.xlabel('Predicted label')
     st.pyplot(fig)
-    
-tabs = st.tabs(["📋 Data Overview", "Compare Model", "Compare Augmentation", "Compare BAGs - TFIDF", "Predict"])
-models = ['Logistic Regression', 'Support Vector Machine', 'Random Forest']
-augments = ['No Augmentation','SMOTE','ADASYN']
-vectors = ['Bag of Words','TFIDF']
-with tabs[0]:
-    st.header("📋 Data Overview")
-    col1,col2,col3 = st.columns(3)
-    with col1:
-        st.metric("Total Records",len(df))
-    with col2:
-        st.metric("Ham",len(np.where(y == 0)[0]))
-    with col3:
-        st.metric("Spam",len(np.where(y == 1)[0]))
 
-    st.dataframe(df.head(10))
-    st.markdown("### 📊 WordCloud")
-    col4,col5 = st.columns(2)
-    ham_words = ' '.join([messages[i] for i in np.where(y == 0)[0]])
-    spam_words = ' '.join([messages[i] for i in np.where(y == 1)[0]])
-    with col4:
-        st.subheader("Ham")
-        fig = plt.figure(figsize=(10, 6))
-        word_cloud_ham = WordCloud(width=800, height=500, random_state=21, max_font_size=110).generate(ham_words)
-        plt.imshow(word_cloud_ham, interpolation='bilinear')
-        st.pyplot(fig)
-    with col5:
-        st.subheader("Spam")
-        fig = plt.figure(figsize=(10, 6))
-        word_cloud_spam = WordCloud(width=800, height=500, random_state=21, max_font_size=110).generate(spam_words)
-        plt.imshow(word_cloud_spam, interpolation='bilinear')
-        st.pyplot(fig)
-with tabs[1]:
-    st.header("🎯 Compare Model")
-    aug_name = st.selectbox("Data Augmentation",augments,key="1")
-    vector_name = st.selectbox("Vectorize",vectors,key="2")
-    if st.button("🚀 Train Model",key=3):
-        cols_tag1 = st.columns(len(models))
-        for index, model_name in enumerate(models):
-            with cols_tag1[index]:
-                with st.container(border=True):
-                    vectorize = create_vector(vector_name)
-                    features = vectorize.fit_transform(messages)
-                    xtrain, xtest, ytrain, ytest= create_train_test_data(features,y,aug_name)
-                    model_train = train_model(model_name,xtrain,ytrain)
-                    pred = model_train.predict(xtest)
-                    plot_graph(ytest, pred,model_name)
-with tabs[2]:
-    st.header("🎯 Compare Augmentation")
-    model_name = st.selectbox("Model Name",models,key="4")
-    vector_name = st.selectbox("Vectorize",vectors,key="5")
-    if st.button("🚀 Train Model",key=6):
-        cols_tag2 = st.columns(len(augments))
-        for index, aug_name in enumerate(augments):
-            with cols_tag2[index]:
-                with st.container(border=True):
-                    vectorize = create_vector(vector_name)
-                    features = vectorize.fit_transform(messages)
-                    xtrain, xtest, ytrain, ytest= create_train_test_data(features,y,aug_name)         
-                    model_train = train_model(model_name,xtrain,ytrain)
-                    pred = model_train.predict(xtest)
-                    plot_graph(ytest, pred,aug_name)
+def main(): 
+    tabs = st.tabs(["📋 Data Overview", "Compare Model", "Compare Augmentation", "Compare BAGs - TFIDF", "Predict", "FAISS"])
+    models = ['Logistic Regression', 'Support Vector Machine', 'Random Forest']
+    augments = ['No Augmentation','SMOTE','ADASYN']
+    vectors = ['Bag of Words','TFIDF']
+    with tabs[0]:
+        st.header("📋 Data Overview")
+        col1,col2,col3 = st.columns(3)
+        with col1:
+            st.metric("Total Records",len(df))
+        with col2:
+            st.metric("Ham",len(np.where(y == 0)[0]))
+        with col3:
+            st.metric("Spam",len(np.where(y == 1)[0]))
 
-with tabs[3]:
-    st.header("🎯 Compare BAGs - TFIDF")
-    model_name = st.selectbox("Model Name",models,key="7")
-    aug_name = st.selectbox("Augmentation",augments,key="8")
-    if st.button("🚀 Train Model",key=9):
-        cols_tag3 = st.columns(len(vectors))
-        for index, vector_name in enumerate(vectors):
-            with cols_tag3[index]:
-                with st.container(border=True):
-                    vectorize = create_vector(vector_name)
-                    features = vectorize.fit_transform(messages)
-                    xtrain, xtest, ytrain, ytest= create_train_test_data(features,y,aug_name)
-                    model_train = train_model(model_name,xtrain,ytrain)
-                    pred = model_train.predict(xtest)
-                    plot_graph(ytest, pred,vector_name)
+        st.dataframe(df.head(10))
+        st.markdown("### 📊 WordCloud")
+        col4,col5 = st.columns(2)
+        ham_words = ' '.join([messages[i] for i in np.where(y == 0)[0]])
+        spam_words = ' '.join([messages[i] for i in np.where(y == 1)[0]])
+        with col4:
+            st.subheader("Ham")
+            fig = plt.figure(figsize=(10, 6))
+            word_cloud_ham = WordCloud(width=800, height=500, random_state=21, max_font_size=110).generate(ham_words)
+            plt.imshow(word_cloud_ham, interpolation='bilinear')
+            st.pyplot(fig)
+        with col5:
+            st.subheader("Spam")
+            fig = plt.figure(figsize=(10, 6))
+            word_cloud_spam = WordCloud(width=800, height=500, random_state=21, max_font_size=110).generate(spam_words)
+            plt.imshow(word_cloud_spam, interpolation='bilinear')
+            st.pyplot(fig)
+    with tabs[1]:
+        st.header("🎯 Compare Model")
+        aug_name = st.selectbox("Data Augmentation",augments,key="1")
+        vector_name = st.selectbox("Vectorize",vectors,key="2")
+        if st.button("🚀 Train Model",key=3):
+            cols_tab1 = st.columns(len(models))
+            for index, model_name in enumerate(models):
+                with cols_tab1[index]:
+                    with st.container(border=True):
+                        vectorize = create_vector(vector_name)
+                        features = vectorize.fit_transform(messages)
+                        xtrain, xtest, ytrain, ytest= create_train_test_data(features,y,aug_name)
+                        model_train = train_model(model_name,xtrain,ytrain)
+                        pred = model_train.predict(xtest)
+                        plot_graph(ytest, pred,model_name)
+    with tabs[2]:
+        st.header("🎯 Compare Augmentation")
+        model_name = st.selectbox("Model Name",models,key="4")
+        vector_name = st.selectbox("Vectorize",vectors,key="5")
+        if st.button("🚀 Train Model",key=6):
+            cols_tab2 = st.columns(len(augments))
+            for index, aug_name in enumerate(augments):
+                with cols_tab2[index]:
+                    with st.container(border=True):
+                        vectorize = create_vector(vector_name)
+                        features = vectorize.fit_transform(messages)
+                        xtrain, xtest, ytrain, ytest= create_train_test_data(features,y,aug_name)         
+                        model_train = train_model(model_name,xtrain,ytrain)
+                        pred = model_train.predict(xtest)
+                        plot_graph(ytest, pred,aug_name)
 
-with tabs[4]:
-    st.header("🎯 Predict")
-    message_input = st.text_input("Message", "")
-    translated = GoogleTranslator(source='auto', target='en').translate(message_input)
-    message_pred = [preprocess_text(translated)]
-    vector_name = st.selectbox("Vectorize",vectors,key="10")
-    aug_name = st.selectbox("Augmentation",augments,key="11")
-    model_name = st.selectbox("Model Name",models,key="12")
-    if st.button("🚀 Train Model",key=13):
-        st.markdown(f'<h3 style="color:blue;">Message: {translated}</h3>', unsafe_allow_html=True)
-        vectorize = create_vector(vector_name)
-        features = vectorize.fit_transform(messages)
-        xtrain, xtest, ytrain, ytest= create_train_test_data(features,y,aug_name)
-        model_train = train_model(model_name,xtrain,ytrain)
-        messages_vector = vectorize.transform(message_pred)
-        pred = model_train.predict(messages_vector)
-        st.markdown(f'<h3 style="color:green;">Class Predicted: {le.inverse_transform(pred)[0]}</h3>', unsafe_allow_html=True)
+    with tabs[3]:
+        st.header("🎯 Compare BAGs - TFIDF")
+        model_name = st.selectbox("Model Name",models,key="7")
+        aug_name = st.selectbox("Augmentation",augments,key="8")
+        if st.button("🚀 Train Model",key=9):
+            cols_tab3 = st.columns(len(vectors))
+            for index, vector_name in enumerate(vectors):
+                with cols_tab3[index]:
+                    with st.container(border=True):
+                        vectorize = create_vector(vector_name)
+                        features = vectorize.fit_transform(messages)
+                        xtrain, xtest, ytrain, ytest= create_train_test_data(features,y,aug_name)
+                        model_train = train_model(model_name,xtrain,ytrain)
+                        pred = model_train.predict(xtest)
+                        plot_graph(ytest, pred,vector_name)
+
+    with tabs[4]:
+        st.header("🎯 Predict")
+        message_input = st.text_input("Message", "")
+        translated = GoogleTranslator(source='auto', target='en').translate(message_input)
+        message_pred = [preprocess_text(translated)]
+        vector_name = st.selectbox("Vectorize",vectors,key="10")
+        aug_name = st.selectbox("Augmentation",augments,key="11")
+        model_name = st.selectbox("Model Name",models,key="12")
+        if st.button("🚀 Train Model",key=13):
+            st.markdown(f'<h3 style="color:blue;">Message: {translated}</h3>', unsafe_allow_html=True)
+            vectorize = create_vector(vector_name)
+            features = vectorize.fit_transform(messages)
+            xtrain, xtest, ytrain, ytest= create_train_test_data(features,y,aug_name)
+            model_train = train_model(model_name,xtrain,ytrain)
+            messages_vector = vectorize.transform(message_pred)
+            pred = model_train.predict(messages_vector)
+            st.markdown(f'<h3 style="color:green;">Class Predicted: {le.inverse_transform(pred)[0]}</h3>', unsafe_allow_html=True)
+
+    with tabs[5]:
+        st.header("🎯 FAISS")
+        index,train_metadata,test_metadata,X_test_emb,y_test = create_train_test_metadata(messages_faiss, y, X_embeddings,metadata,test_size= 0.1,seed = 42)
+        k_values=[1,3,5]
+        predict_results = evaluate_knn_accuracy(X_test_emb,index, train_metadata, k_values)
+        cols_tab5 = st.columns(len(k_values))
+        for index, k in enumerate(k_values):
+            with cols_tab5[index]:
+                plot_graph(y_test, predict_results[k],f"K Nearest Neighbors: {k}")
+
+
+if __name__ == "__main__":
+    main()
