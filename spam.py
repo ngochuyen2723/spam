@@ -142,7 +142,7 @@ def train_model(model_name,features_vector,labels_vector):
     model = create_model(model_name)
     return model.fit(features_vector,labels_vector)
 
-def evaluate(y_true, y_pred, , pos_label=0):
+def evaluate(y_true, y_pred, pos_label=0):
     accuracy = accuracy_score(y_true, y_pred)
     f1_scores = f1_score(y_true, y_pred)
     cm = confusion_matrix(y_true, y_pred)
@@ -193,7 +193,7 @@ with tabs[1]:
                 xtrain, xtest, ytrain, ytest= create_train_test_data(features,y,aug_name)
                 model_train = train_model(model_name,xtrain,ytrain)
                 pred = model_train.predict(xtest)
-                accuracy, f1_scores, cm, prec, rec, thres = accuracy_score(ytest, pred)
+                accuracy, f1_scores, cm, prec, rec, thres = evaluate(ytest, pred)
                 st.subheader(model_name)
                 fig = plt.figure(figsize=(4,4))
                 sns.heatmap(cm, linewidths=1, fmt='d', cmap='Greens', annot=True)
@@ -215,9 +215,7 @@ with tabs[2]:
                 xtrain, xtest, ytrain, ytest= create_train_test_data(features,y,aug_name)         
                 model_train = train_model(model_name,xtrain,ytrain)
                 pred = model_train.predict(xtest)
-                accuracy = accuracy_score(ytest, pred)
-                f1_scores = f1_score(ytest, pred)
-                cm = confusion_matrix(ytest, pred)
+                accuracy, f1_scores, cm, prec, rec, thres = evaluate(ytest, pred)
                 st.subheader(aug_name)
                 fig = plt.figure(figsize=(4,4))
                 sns.heatmap(cm, linewidths=1, fmt='d', cmap='Greens', annot=True)
@@ -240,10 +238,7 @@ with tabs[3]:
                 xtrain, xtest, ytrain, ytest= create_train_test_data(features,y,aug_name)
                 model_train = train_model(model_name,xtrain,ytrain)
                 pred = model_train.predict(xtest)
-                
-                accuracy = accuracy_score(ytest, pred)
-                f1_scores = f1_score(ytest, pred)
-                cm = confusion_matrix(ytest, pred)
+                accuracy, f1_scores, cm, prec, rec, thres = evaluate(ytest, pred)
                 st.subheader(vector_name)
                 fig = plt.figure(figsize=(4,4))
                 sns.heatmap(cm, linewidths=1, fmt='d', cmap='Greens', annot=True)
