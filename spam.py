@@ -143,10 +143,10 @@ def train_model(model_name,features_vector,labels_vector):
     return model.fit(features_vector,labels_vector)
 
 def evaluate(y_true, y_pred, pos_label=0):
-    accuracy = accuracy_score(y_true, y_pred)
-    f1_scores = f1_score(y_true, y_pred)
-    cm = confusion_matrix(y_true, y_pred)
-    prec, rec, thres = precision_recall_curve(y_true, y_pred)
+    accuracy = accuracy_score(y_true, y_pred, pos_label=0)
+    f1_scores = f1_score(y_true, y_pred, pos_label=0)
+    cm = confusion_matrix(y_true, y_pred, pos_label=0)
+    prec, rec, thres = precision_recall_curve(y_true, y_pred, pos_label=0)
     return accuracy, f1_scores, cm, prec, rec, thres
     
 tabs = st.tabs(["📋 Data Overview", "Compare Model", "Compare Augmentation", "Compare BAGs - TFIDF", "Predict"])
