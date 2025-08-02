@@ -150,8 +150,7 @@ def evaluate(y_true, y_pred):
     return accuracy, f1_scores, cm, precision, recall
 
 def plot_graph(y_true, y_pred,name):
-    #st.markdown(f'<h2 style="text-align: center;">{name}</h2>', unsafe_allow_html=True)
-    st.subheader(name)
+    st.markdown(f'<h2 style="text-align: center;">{name}</h2>', unsafe_allow_html=True)
     accuracy, f1_score, cm, prec, rec = evaluate(ytest,pred)
     col_acc, col_f1 = st.columns(2)
     col_acc.metric("Accuracy", f"{accuracy:.3f}")
