@@ -18,12 +18,11 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.svm import SVC
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, f1_score, confusion_matrix, classification_report
+from sklearn.metrics import accuracy_score, f1_score, confusion_matrix, classification_report, precision_score, recall_score
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from nltk.corpus import stopwords, wordnet
 from imblearn.over_sampling import SMOTE, ADASYN
 from deep_translator import GoogleTranslator
-from sklearn.metrics import precision_recall_curve
 import streamlit as st
 
 nltk.download('averaged_perceptron_tagger_eng')
@@ -146,8 +145,25 @@ def evaluate(y_true, y_pred):
     accuracy = accuracy_score(y_true, y_pred)
     f1_scores = f1_score(y_true, y_pred)
     cm = confusion_matrix(y_true, y_pred)
-    prec, rec, thres = precision_recall_curve(y_true, y_pred)
-    return accuracy, f1_scores, cm, prec, rec, thres
+    precision = precision_score(y_true, y_pred)
+    recall = recall_score(y_true, y_pred)
+    return accuracy, f1_scores, cm, precision, recall
+
+def plot_graph(y_true, y_pred,name):
+    #st.markdown(f'<h2 style="text-align: center;">{name}</h2>', unsafe_allow_html=True)
+    st.subheader(name)
+    accuracy, f1_score, cm, prec, rec = evaluate(ytest,pred)
+    col_acc, col_f1 = st.columns(2)
+    col_acc.metric("Accuracy", f"{accuracy:.3f}")
+    col_f1.metric("F1-Score", f"{f1_score:.3f}")
+    col_prec, col_rec = st.columns(2)
+    col_prec.metric("Precision", f"{prec:.3f}")
+    col_rec.metric("Recall", f"{rec:.3f}")
+    fig = plt.figure(figsize=(4,4))
+    sns.heatmap(cm, linewidths=1, fmt='d', cmap='Greens', annot=True)
+    plt.ylabel('Actual label')
+    plt.xlabel('Predicted label')
+    st.pyplot(fig)
     
 tabs = st.tabs(["📋 Data Overview", "Compare Model", "Compare Augmentation", "Compare BAGs - TFIDF", "Predict"])
 models = ['Logistic Regression', 'Support Vector Machine', 'Random Forest']
@@ -188,20 +204,13 @@ with tabs[1]:
         cols_tag1 = st.columns(len(models))
         for index, model_name in enumerate(models):
             with cols_tag1[index]:
-                vectorize = create_vector(vector_name)
-                features = vectorize.fit_transform(messages)
-                xtrain, xtest, ytrain, ytest= create_train_test_data(features,y,aug_name)
-                model_train = train_model(model_name,xtrain,ytrain)
-                pred = model_train.predict(xtest)
-                accuracy, f1_scores, cm, prec, rec, thres = evaluate(ytest, pred)
-                st.subheader(model_name)
-                fig = plt.figure(figsize=(4,4))
-                sns.heatmap(cm, linewidths=1, fmt='d', cmap='Greens', annot=True)
-                plt.ylabel('Actual label')
-                plt.xlabel('Predicted label')
-                title = f'Accuracy Score: {accuracy:.3f}, F1 Score: {f1_scores:.3f}'
-                plt.title(title)
-                st.pyplot(fig)
+                with st.container(border=True):
+                    vectorize = create_vector(vector_name)
+                    features = vectorize.fit_transform(messages)
+                    xtrain, xtest, ytrain, ytest= create_train_test_data(features,y,aug_name)
+                    model_train = train_model(model_name,xtrain,ytrain)
+                    pred = model_train.predict(xtest)
+                    plot_graph(ytest, pred,model_name)
 with tabs[2]:
     st.header("🎯 Compare Augmentation")
     model_name = st.selectbox("Model Name",models,key="4")
@@ -210,20 +219,13 @@ with tabs[2]:
         cols_tag2 = st.columns(len(augments))
         for index, aug_name in enumerate(augments):
             with cols_tag2[index]:
-                vectorize = create_vector(vector_name)
-                features = vectorize.fit_transform(messages)
-                xtrain, xtest, ytrain, ytest= create_train_test_data(features,y,aug_name)         
-                model_train = train_model(model_name,xtrain,ytrain)
-                pred = model_train.predict(xtest)
-                accuracy, f1_scores, cm, prec, rec, thres = evaluate(ytest, pred)
-                st.subheader(aug_name)
-                fig = plt.figure(figsize=(4,4))
-                sns.heatmap(cm, linewidths=1, fmt='d', cmap='Greens', annot=True)
-                plt.ylabel('Actual label')
-                plt.xlabel('Predicted label')
-                title = f'Accuracy Score: {accuracy:.3f}, F1 Score: {f1_scores:.3f}'
-                plt.title(title)
-                st.pyplot(fig)
+                with st.container(border=True):
+                    vectorize = create_vector(vector_name)
+                    features = vectorize.fit_transform(messages)
+                    xtrain, xtest, ytrain, ytest= create_train_test_data(features,y,aug_name)         
+                    model_train = train_model(model_name,xtrain,ytrain)
+                    pred = model_train.predict(xtest)
+                    plot_graph(ytest, pred,aug_name)
 
 with tabs[3]:
     st.header("🎯 Compare BAGs - TFIDF")
@@ -233,20 +235,13 @@ with tabs[3]:
         cols_tag3 = st.columns(len(vectors))
         for index, vector_name in enumerate(vectors):
             with cols_tag3[index]:
-                vectorize = create_vector(vector_name)
-                features = vectorize.fit_transform(messages)
-                xtrain, xtest, ytrain, ytest= create_train_test_data(features,y,aug_name)
-                model_train = train_model(model_name,xtrain,ytrain)
-                pred = model_train.predict(xtest)
-                accuracy, f1_scores, cm, prec, rec, thres = evaluate(ytest, pred)
-                st.subheader(vector_name)
-                fig = plt.figure(figsize=(4,4))
-                sns.heatmap(cm, linewidths=1, fmt='d', cmap='Greens', annot=True)
-                plt.ylabel('Actual label')
-                plt.xlabel('Predicted label')
-                title = f'Accuracy Score: {accuracy:.3f}, F1 Score: {f1_scores:.3f}'
-                plt.title(title)
-                st.pyplot(fig)
+                with st.container(border=True):
+                    vectorize = create_vector(vector_name)
+                    features = vectorize.fit_transform(messages)
+                    xtrain, xtest, ytrain, ytest= create_train_test_data(features,y,aug_name)
+                    model_train = train_model(model_name,xtrain,ytrain)
+                    pred = model_train.predict(xtest)
+                    plot_graph(ytest, pred,vector_name)
 
 with tabs[4]:
     st.header("🎯 Predict")
