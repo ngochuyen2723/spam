@@ -65,7 +65,6 @@ st.markdown("""
             color: white;
             font-weight: bold;
         }
-        h1, h2, h3 { color: #ff4b4b; }
     </style>
 """, unsafe_allow_html=True)
 
