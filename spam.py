@@ -85,8 +85,9 @@ def create_feature_label(path):
     messages = [preprocess_text(message) for message in messages_faiss]
     le = LabelEncoder()
     y = le.fit_transform(labels)
-    return df, messages_faiss, messages, labels, y, le
-df, messages_faiss,messages, labels,y, le = create_feature_label('spam.csv')
+    scaler = StandardScaler()
+    return df, messages_faiss, messages, labels, y, le,scaler
+df, messages_faiss,messages, labels,y, le, scaler = create_feature_label('spam.csv')
 
 
 def create_embedding_metadata(messages,model,tokenizer,device):
@@ -177,7 +178,7 @@ def main():
                     with st.container(border=True):
                         vectorize = create_vector(vector_name)
                         features = vectorize.fit_transform(messages)
-                        xtrain, xtest, ytrain, ytest= create_train_test_data(features,y,aug_name)         
+                        xtrain, xtest, ytrain, ytest= create_train_test_data(features,y,aug_name,scaler)         
                         model_train = train_model(model_name,xtrain,ytrain)
                         pred = model_train.predict(xtest)
                         plot_graph(ytest, pred,aug_name)
@@ -193,7 +194,7 @@ def main():
                     with st.container(border=True):
                         vectorize = create_vector(vector_name)
                         features = vectorize.fit_transform(messages)
-                        xtrain, xtest, ytrain, ytest= create_train_test_data(features,y,aug_name)
+                        xtrain, xtest, ytrain, ytest= create_train_test_data(features,y,aug_name,scaler)
                         model_train = train_model(model_name,xtrain,ytrain)
                         pred = model_train.predict(xtest)
                         plot_graph(ytest, pred,vector_name)
@@ -210,7 +211,7 @@ def main():
             st.markdown(f'<h3 style="color:blue;">Message: {translated}</h3>', unsafe_allow_html=True)
             vectorize = create_vector(vector_name)
             features = vectorize.fit_transform(messages)
-            xtrain, xtest, ytrain, ytest= create_train_test_data(features,y,aug_name)
+            xtrain, xtest, ytrain, ytest= create_train_test_data(features,y,aug_name,scaler)
             model_train = train_model(model_name,xtrain,ytrain)
             messages_vector = vectorize.transform(message_pred)
             pred = model_train.predict(messages_vector)
