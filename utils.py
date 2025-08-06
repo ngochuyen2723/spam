@@ -168,7 +168,7 @@ def create_vector(name):
     else:
         return CountVectorizer(max_df=0.9, min_df=2)
 
-def create_train_test_data(X,Y,augment):
+def create_train_test_data(X,Y,augment,scaler):
     xtrain, xtest, ytrain, ytest = train_test_split(X,Y,random_state=42, test_size = 0.3, stratify = Y)
     if augment == 'SMOTE':
         sm = SMOTE(random_state = 42)
@@ -176,6 +176,8 @@ def create_train_test_data(X,Y,augment):
     elif augment == 'ADASYN':
         ada = ADASYN(random_state = 42)
         xtrain, ytrain = ada.fit_resample(xtrain, ytrain)
+    xtrain = scaler.fit_transform(xtrain)
+    xtest = scaler.transform(xtest)
     return xtrain, xtest, ytrain, ytest
 
 def train_model(model_name,features_vector,labels_vector):
