@@ -75,7 +75,7 @@ def create_model_faiss():
     model = model.to(device)
     model.eval()
     return model,device,tokenizer
-model,device,tokenizer = create_model_faiss()
+
 
 @st.cache_data
 def create_feature_label(path):
@@ -87,7 +87,7 @@ def create_feature_label(path):
     y = le.fit_transform(labels)
     scaler = StandardScaler()
     return df, messages_faiss, messages, labels, y, le,scaler
-df, messages_faiss,messages, labels,y, le, scaler = create_feature_label('spam.csv')
+
 
 
 def create_embedding_metadata(messages,model,tokenizer,device):
@@ -95,7 +95,7 @@ def create_embedding_metadata(messages,model,tokenizer,device):
     metadata = [{"index":i,"message":message, "label": label, "label_encoded":y[i]} 
                     for i,(message, label) in enumerate(zip(messages,labels))]
     return X_embeddings,metadata
-X_embeddings, metadata = create_embedding_metadata(messages_faiss,model,tokenizer,device)
+
 
 def evaluate(y_true, y_pred):
     accuracy = accuracy_score(y_true, y_pred)
@@ -121,6 +121,9 @@ def plot_graph(y_true, y_pred,name):
     st.pyplot(fig)
 
 def main(): 
+    model,device,tokenizer = create_model_faiss()
+    df, messages_faiss,messages, labels,y, le, scaler = create_feature_label('spam.csv')
+    X_embeddings, metadata = create_embedding_metadata(messages_faiss,model,tokenizer,device)
     tabs = st.tabs(["📋 Data Overview", "Compare Model", "Compare Augmentation", "Compare BAGs - TFIDF", "Predict", "FAISS"])
     models = ['Logistic Regression', 'Support Vector Machine', 'Random Forest']
     augments = ['No Augmentation','SMOTE','ADASYN']
