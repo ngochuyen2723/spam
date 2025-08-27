@@ -130,10 +130,10 @@ def create_vector(name):
 def create_train_test_data(X,Y,augment):
     xtrain, xtest, ytrain, ytest = train_test_split(X,Y,random_state=42, test_size = 0.3, stratify = Y)
     if augment == 'SMOTE':
-        sm = SMOTE(random_state = 42)
+        sm = SMOTE(sampling_strategy={1:2000},random_state = 42)
         xtrain, ytrain = sm.fit_resample(xtrain, ytrain)
     elif augment == 'ADASYN':
-        ada = ADASYN(random_state = 42)
+        ada = ADASYN(sampling_strategy={1:2000},random_state = 42)
         xtrain, ytrain = ada.fit_resample(xtrain, ytrain)
     return xtrain, xtest, ytrain, ytest
 
